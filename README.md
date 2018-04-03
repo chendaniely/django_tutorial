@@ -121,4 +121,109 @@ work.
 > include other URL patterns. admin.site.urls is the only exception to
 > this.
 
-# Database setup
+# Database setup (`mysite/settings.py`)
+
+If not using sqlite make sure you create the database first,
+and the user in `mysite/settings.py` has `create` privileges.
+
+- `mysite/settings.py` will specify the database setup under the `DATABSES` global dictionary, sqlite is the default.
+    - `ENGINE` – Either
+        - 'django.db.backends.sqlite3'
+        - 'django.db.backends.postgresql'
+        - 'django.db.backends.mysql', or
+        - 'django.db.backends.oracle'
+        - Other backends are also available.
+    - `NAME` – The name of your database.
+    If you’re using SQLite, the database will be a file on your computer;
+    in that case, NAME should be the full absolute path, including filename, of that file.
+    The default value, os.path.join(BASE_DIR, 'db.sqlite3'), will store the file in your project directory.
+
+# Installed apps (`mysite/settings.py`)
+
+`INSTALLED_APPS` holds the names of all Django applications that are activated in this Django instance.
+Apps can be used in multiple projects, and you can package and distribute them for use by others in their projects.
+
+By default, INSTALLED_APPS contains the following apps, all of which come with Django:
+
+- django.contrib.admin – The admin site. You’ll use it shortly.
+- django.contrib.auth – An authentication system.
+- django.contrib.contenttypes – A framework for content types.
+- django.contrib.sessions – A session framework.
+- django.contrib.messages – A messaging framework.
+- django.contrib.staticfiles – A framework for managing static files.
+
+Some of these applications make use of at least one database table, though,
+so we need to create the tables in the database before we can use them
+
+```bash
+python manage.py migrate
+```
+
+The migrate command looks at the INSTALLED_APPS setting and creates any necessary database tables according to the database settings in your mysite/settings.py file and the database migrations shipped with the app
+
+# Models
+
+models – essentially, your database layout, with additional metadata
+
+> A model is the single, definitive source of truth about your data. It contains the essential fields and behaviors of the data you’re storing. Django follows the DRY Principle. The goal is to define your data model in one place and automatically derive things from it.
+
+> This includes the migrations - unlike in Ruby On Rails, for example, migrations are entirely derived from your models file, and are essentially just a history that Django can roll through to update your database schema to match your current models.
+
+In our simple poll app, we’ll create two models: Question and Choice. A Question has a question and a publication date. A Choice has two fields: the text of the choice and a vote tally. Each Choice is associated with a Question.
+
+These concepts are represented by simple Python classes. Edit the polls/models.py
+
+```python
+from django.db import models
+
+
+class Question(models.Model):
+    question_text = models.CharField(max_length=200)
+    pub_date = models.DateTimeField('date published')
+
+
+class Choice(models.Model):
+    question = models.ForeignKey(Question, on_delete=models.CASCADE)
+    choice_text = models.CharField(max_length=200)
+    votes = models.IntegerField(default=0)
+```
+
+note a relationship is defined, using `ForeignKey`.
+That tells Django each Choice is related to a single Question
+
+# Activating models
+
+add `'polls.apps.PollsConfig',` to the `INSTALLED_APPS` section in `mysite/settings.py`
+
+```bash
+python manage.py makemigrations polls
+```
+By running makemigrations, you’re telling Django that you’ve made some changes to your models (in this case, you’ve made new ones) and that you’d like the changes to be stored as a migration.
+
+There’s a command that will run the migrations for you and manage your database schema automatically - that’s called `migrate`
+
+but first, let’s see what SQL that migration would run. The sqlmigrate command takes migration names and returns their SQL:
+
+```bash
+python manage.py sqlmigrate polls 0001
+```
+
+The `sqlmigrate` command doesn’t actually run the migration on your database - it just prints it to the screen so that you can see what SQL Django thinks is required. It’s useful for checking what Django is going to do or if you have database administrators who require SQL scripts for changes.
+
+```bash
+# checks for any problems in your project without making migrations or touching the database
+python manage.py check
+```
+
+run migrate again to create those model tables in your database:
+```bash
+python manage.py migrate
+```
+
+remember the three-step guide to making model changes:
+
+1. Change your models (in models.py).
+2. Run python manage.py makemigrations to create migrations for those changes
+3. Run python manage.py migrate to apply those changes to the database.
+
+# Playing with the API
